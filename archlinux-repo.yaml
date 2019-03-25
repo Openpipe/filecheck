@@ -1,11 +1,48 @@
 start:
-    - iterate: [community, core, extra]
-    - tag: { section: $_$ }
-    - read from file:
-        https://mirrors.edge.kernel.org/archlinux/$_$/os/x86_64/$_$.db.tar.gz
-    # On field filename, replace  ".desc" with ""
-    - transform using string replace: { filename: { ".desc": "" } }
-    #- transform using regex: { subsitute: { filename: { ".desc$": "" } } }
-    - tag: { filename: $_$ }
-    - print: $_tag$
-    - transform using regex: { key_map:  "%(\\S*)%\n(.*)" }
+
+    # Tag collection name
+    - tag: { collection: Arch Linux Repository }
+
+    # Tag section name and per section mirror base
+    - insert: [ community, core, extra ]
+    - iterate:
+    - tag:
+        section: $_$
+        meta_dir: archlinux_meta/$_$
+        mirror_base: https://mirrors.edge.kernel.org/archlinux/$_$/os/x86_64
+    - execute: mkdir -p $_tag['meta_dir']$
+
+    # Generate section db  url
+    - insert: $_tag['mirror_base']$/$_tag['section']$.db.tar.gz
+
+    # Download the .db file
+    - print: Downloading file $_$
+    - read from file: $_$ # This will produce the .tar.gz content
+
+    # All files in the tar are "desc" files, which contain values/fields
+    # in the format %FIELD_NAME%\n.field_content_here....%FIELD_NAME"
+    - insert: $content.decode()$  # decoded content to utf-8
+    - transform using regex assign: '%(\S*)%\n(.*)'
+    - tag key:  [ARCH, DESC, FILENAME, LICENSE, MD5SUM, NAME, PACKAGER ]
+
+    # Set the filename that we use for the local metadata cache
+    - tag: { metadata_filename: "$_tag['meta_dir']$/$_tag['FILENAME']$.json" }
+
+    # Continue only if no local cached file is found
+    - read from file status: $_tag['metadata_filename']$
+    - filter: { in: "$ _ == {} $" }
+    - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
+    - print: Downloading $url$
+    - read from file: $url$
+
+    - filter:
+        in: $filename == ".MTREE" $
+        what: $content$
+    - decompress: { type: gzip }
+
+    - tag: { MTREE: $ _.decode().splitlines() $ }
+    - insert: "$_tag['meta_dir']$/$_tag['FILENAME']$.json"
+    - print: Creating metadata file $_$
+    - write to file:
+        path: $_tag['metadata_filename']$
+        content: $_tag$
