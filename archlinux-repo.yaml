@@ -1,0 +1,11 @@
+start:
+    - iterate: [community, core, extra]
+    - tag: { section: $_$ }
+    - read from file:
+        https://mirrors.edge.kernel.org/archlinux/$_$/os/x86_64/$_$.db.tar.gz
+    # On field filename, replace  ".desc" with ""
+    - transform using string replace: { filename: { ".desc": "" } }
+    #- transform using regex: { subsitute: { filename: { ".desc$": "" } } }
+    - tag: { filename: $_$ }
+    - print: $_tag$
+    - transform using regex: { key_map:  "%(\\S*)%\n(.*)" }
