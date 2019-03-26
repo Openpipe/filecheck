@@ -8,7 +8,7 @@ start:
     - iterate:
     - tag:
         section: $_$
-        meta_dir: archlinux_meta/$_$
+        meta_dir: packages_metadata/$_$
         mirror_base: https://mirrors.edge.kernel.org/archlinux/$_$/os/x86_64
     - execute: mkdir -p $_tag['meta_dir']$
 
@@ -18,6 +18,8 @@ start:
     # Download the .db file
     - print: Downloading file $_$
     - read from file: $_$ # This will produce the .tar.gz content
+    #- limit: 1 # Don't process more than one file
+    #- tag: { _debug: True }
 
     # All files in the tar are "desc" files, which contain values/fields
     # in the format %FIELD_NAME%\n.field_content_here....%FIELD_NAME"
@@ -28,9 +30,18 @@ start:
     # Set the filename that we use for the local metadata cache
     - tag: { metadata_filename: "$_tag['meta_dir']$/$_tag['FILENAME']$.json" }
 
-    # Continue only if no local cached file is found
     - read from file status: $_tag['metadata_filename']$
-    - filter: { in: "$ _ == {} $" }
+    - send to segment:
+        name: download metadata file    # Download metadata
+        when: "$ _ == {} $"             # When status is empty(file not found)
+
+    - send to segment: found cached file
+
+found cached file:
+    - tag: { report_title: Cache Info }
+    #- send to segment: count_and_report
+
+download metadata file:
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
     - print: Downloading $url$
     - read from file: $url$
@@ -46,3 +57,16 @@ start:
     - write to file:
         path: $_tag['metadata_filename']$
         content: $_tag$
+    - tag: { report_title: Download Info }
+    - limit: 1 # Don't process more than one file
+    - tag: { _debug: True }
+    - send to segment: count_and_report
+
+count_and_report:
+    - count:
+        group_by: $_tag['section']$
+    - print: "==== $_tag['report_title']$ ===="
+    - iterate: $_$
+    - print: section '$key$', $value$ file(s)
+    - print: "===================="
+
