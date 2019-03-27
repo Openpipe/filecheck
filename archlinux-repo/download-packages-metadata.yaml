@@ -39,7 +39,9 @@ start:
 
 found cached file:
     - tag: { report_title: Cache Info }
-    #- send to segment: count_and_report
+    - count:
+        group_by: $_tag['section']$
+    - send to segment: report file activity
 
 download metadata file:
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
@@ -57,14 +59,13 @@ download metadata file:
     - write to file:
         path: $_tag['metadata_filename']$
         content: $_tag$
-    - tag: { report_title: Download Info }
-    - limit: 1 # Don't process more than one file
-    - tag: { _debug: True }
-    - send to segment: count_and_report
 
-count_and_report:
+    - tag: { report_title: Download Info }
     - count:
         group_by: $_tag['section']$
+    - send to segment: count_and_report
+
+report file activity:
     - print: "==== $_tag['report_title']$ ===="
     - iterate: $_$
     - print: section '$key$', $value$ file(s)
