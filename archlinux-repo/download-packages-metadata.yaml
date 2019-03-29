@@ -18,8 +18,6 @@ start:
     # Download the .db file
     - print: Downloading file $_$
     - read from file: $_$ # This will produce the .tar.gz content
-    #- limit: 1 # Don't process more than one file
-    #- tag: { _debug: True }
 
     # All files in the tar are "desc" files, which contain values/fields
     # in the format %FIELD_NAME%\n.field_content_here....%FIELD_NAME"
@@ -48,9 +46,8 @@ download metadata file:
     - print: Downloading $url$
     - read from file: $url$
 
-    - filter:
-        in: $filename == ".MTREE" $
-        what: $content$
+    - select: $filename == ".MTREE" $
+    - insert: $content$
     - decompress: { type: gzip }
 
     - tag: { MTREE: $ _.decode().splitlines() $ }
@@ -63,7 +60,7 @@ download metadata file:
     - tag: { report_title: Download Info }
     - count:
         group_by: $_tag['section']$
-    - send to segment: count_and_report
+    - send to segment: report file activity
 
 report file activity:
     - print: "==== $_tag['report_title']$ ===="
