@@ -1,5 +1,9 @@
+# The following section will only be used by the local_multi_thread engine
+
+# The main segment
 start:
 
+    - tag: { base_dir: $path$ }
     # Tag collection name
     - tag: { collection: Arch Linux Repository }
 
@@ -8,7 +12,7 @@ start:
     - iterate:
     - tag:
         section: $_$
-        meta_dir: packages_metadata/$_$
+        meta_dir: $_tag['base_dir']$/packages_metadata/$_$
         mirror_base: https://mirrors.edge.kernel.org/archlinux/$_$/os/x86_64
     - execute: mkdir -p $_tag['meta_dir']$
 
@@ -17,7 +21,7 @@ start:
 
     # Download the .db file
     - print: Downloading file $_$
-    - read from file: $_$ # This will produce the .tar.gz content
+    - read from url: $_$ # This will produce the .tar.gz content
 
     # All files in the tar are "desc" files, which contain values/fields
     # in the format %FIELD_NAME%\n.field_content_here....%FIELD_NAME"
@@ -44,7 +48,7 @@ found cached file:
 download metadata file:
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
     - print: Downloading $url$
-    - read from file: $url$
+    - read from url: $url$
 
     - select: $filename == ".MTREE" $
     - insert: $content$
