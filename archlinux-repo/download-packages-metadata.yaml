@@ -15,6 +15,13 @@ start:
         meta_dir: $_tag['base_dir']$/packages_metadata/$_$
         mirror_base: https://mirrors.edge.kernel.org/archlinux/$_$/os/x86_64
     - execute: mkdir -p $_tag['meta_dir']$
+    - send to segment:
+        section_meta_downloader
+
+section_meta_downloader:
+
+    - enable:
+        concurrency: 5
 
     # Generate section db  url
     - insert: $_tag['mirror_base']$/$_tag['section']$.db.tar.gz
@@ -46,6 +53,8 @@ found cached file:
     - send to segment: report file activity
 
 download metadata file:
+    - enable:
+        concurrency: 100
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
     - print: Downloading $url$
     - read from url: $url$
