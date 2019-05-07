@@ -33,7 +33,7 @@ section_meta_downloader:
     # All files in the tar are "desc" files, which contain values/fields
     # in the format %FIELD_NAME%\n.field_content_here....%FIELD_NAME"
     - insert: $content.decode()$  # decoded content to utf-8
-    - transform using regex assign: '%(\S*)%\n(.*)'
+    - transform from regex assign: '%(\S*)%\n(.*)'
     - tag key:  [ARCH, DESC, FILENAME, LICENSE, MD5SUM, NAME, PACKAGER ]
 
     # Set the filename that we use for the local metadata cache
