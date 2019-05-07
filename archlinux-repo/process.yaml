@@ -1,0 +1,16 @@
+start:
+    - read from file list: $path$/packages_metadata/*/*.json
+    - iterate:
+    - send to segment: process_meta_file
+
+process_meta_file:
+    - read from file: $_$
+    - limit: 1
+    - insert: $MTREE$
+    - iterate:
+    - select: $_[0] != '#'$
+    - split:
+        separator: " "
+        max_split: 1
+        field_list: [filename, properties]
+    - print:
