@@ -4,13 +4,19 @@ start:
     - send to segment: process_meta_file
 
 process_meta_file:
+    - enable:
+        concurrency: 100
     - read from file: $_$
-    - limit: 1
     - insert: $MTREE$
     - iterate:
     - select: $_[0] != '#'$
+    - pprint: OK $_$
     - split:
         separator: " "
         max_split: 1
         field_list: [filename, properties]
-    - print:
+    - tag key: filename
+    - insert: $properties$
+    - transform from regex assign: (\S*)=(\S*)
+    - merge: $_tag$
+    - pprint:
