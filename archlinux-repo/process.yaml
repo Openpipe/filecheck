@@ -1,16 +1,46 @@
+_mongodb_instance: &mongo_db
+    db_name: filecheck   # DB Name
+    url: localhost:27017
+
 start:
-    - read from file list: $path$/packages_metadata/*/*.json
+    - tag key: path
+    - read from file list: $path$/packages_metadata/*
+    - iterate:
+    - insert path split:
+    - insert:
+        section: $file$
+    - send to segment: insert_collection
+
+insert_collection:
+    - enable:
+        concurrency: 4
+    - set:
+        name: ArchLinux
+        status: IN_PROGRESS
+    - tag key: section
+    - write to mongodb:
+        <<: *mongo_db
+        collection: collections
+        buffer_size: 1
+    - tag:
+        collection_id: $str(_[0])$
+    - send to segment: insert_collection_packages
+
+insert_collection_packages:
+    - read from file list: $_tag.path$/packages_metadata/$_tag.section$/*.json
     - iterate:
     - send to segment: process_meta_file
 
 process_meta_file:
     - enable:
         concurrency: 100
-    - read from file: $_$
+    - read from file:
+        path: $_$
+    - tag:
+        archive: $FILENAME$
     - insert: $MTREE$
     - iterate:
-    - select: $_[0] != '#'$
-    - pprint: OK $_$
+    - select: $_[0] != '#'$q
     - split:
         separator: " "
         max_split: 1
@@ -18,5 +48,12 @@ process_meta_file:
     - tag key: filename
     - insert: $properties$
     - transform from regex assign: (\S*)=(\S*)
+    - drop: section     # We already got it on tags
     - merge: $_tag$
-    - pprint:
+    - drop: path
+    - set:
+        status: IN_PROGRESS
+    - write to mongodb:
+        <<: *mongo_db
+        collection: file_list
+        buffer_size: 1000
