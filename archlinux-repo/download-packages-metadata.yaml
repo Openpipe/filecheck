@@ -21,19 +21,21 @@ start:
 section_meta_downloader:
 
     - enable:
-        concurrency: 5
+        concurrency: 1
 
     # Generate section db  url
     - insert: $_tag['mirror_base']$/$_tag['section']$.db.tar.gz
 
     # Download the .db file
-    - print: Downloading file $_$
+    #- print: Downloading file $_$
     - read from url: $_$ # This will produce the .tar.gz content
 
     # All files in the tar are "desc" files, which contain values/fields
     # in the format %FIELD_NAME%\n.field_content_here....%FIELD_NAME"
     - insert: $content.decode()$  # decoded content to utf-8
     - transform from regex assign: '%(\S*)%\n(.*)'
+    - set:
+        LICENSE: $_.get('LICENSE', 'N/A')$  # Some packages do not provide a license
     - tag key:  [ARCH, DESC, FILENAME, LICENSE, MD5SUM, NAME, PACKAGER ]
 
     # Set the filename that we use for the local metadata cache
@@ -44,40 +46,31 @@ section_meta_downloader:
         name: download metadata file    # Download metadata
         when: "$ _ == {} $"             # When status is empty(file not found)
 
-    - send to segment: found cached file
-
-found cached file:
-    - tag: { report_title: Cache Info }
-    - count:
-        group_by: $_tag['section']$
-    - send to segment: report file activity
-
 download metadata file:
     - enable:
         concurrency: 100
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
     - print: Downloading $url$
-    - read from url: $url$
-
-    - select: $filename == ".MTREE" $
+    - read from url:
+        url: $url$
+        to_tmp_file: True
+    - tag:
+            tmp_filename: $_$
+    - read from file:
+        path: $_$
+        mime_type: application/x-tar
+        select: .MTREE
+    - unlink: $_tag.tmp_filename$
     - insert: $content$
     - decompress: { type: gzip }
-
     - tag: { MTREE: $ _.decode().splitlines() $ }
     - insert: "$_tag['meta_dir']$/$_tag['FILENAME']$.json"
     - print: Creating metadata file $_$
     - write to file:
         path: $_tag['metadata_filename']$
         content: $_tag$
+    - send to segment: count_total_downloads
 
-    - tag: { report_title: Download Info }
+count_total_downloads:
     - count:
-        group_by: $_tag['section']$
-    - send to segment: report file activity
-
-report file activity:
-    - print: "==== $_tag['report_title']$ ===="
-    - iterate: $_$
-    - print: section '$key$', $value$ file(s)
-    - print: "===================="
 
