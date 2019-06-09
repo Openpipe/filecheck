@@ -48,7 +48,7 @@ section_meta_downloader:
 
 download metadata file:
     - enable:
-        concurrency: 100
+        concurrency: 10
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
     - print: Downloading $url$
     - read from url:
@@ -56,8 +56,18 @@ download metadata file:
         to_tmp_file: True
     - tag:
             tmp_filename: $_$
+    - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$.sig" }
+    - read from url:
+        url: $url$
+        to_tmp_file: True
+    - execute: gpg --verify $_$ $_tag.tmp_filename$
+    - insert: $stderr$
+    - transform from regex match:
+        signer: Good signature from "([^"]*)'
+    - stderr:
+        gpg: G
     - read from file:
-        path: $_$
+        path: $_tag.tmp_filename$
         mime_type: application/x-tar
         select: .MTREE
     - unlink: $_tag.tmp_filename$
