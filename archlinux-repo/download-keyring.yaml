@@ -1,0 +1,21 @@
+start:
+    - tag: { base_dir: $path$ }
+    - read from url:
+        url: https://git.archlinux.org/archlinux-keyring.git/plain/archlinux.gpg
+        mime_type: binary
+        to_tmp_file: True
+    - tag:
+        tmp_file: $_$
+    - execute:
+        command: gpg --dearmor $_$
+        output_as_text: False
+    - read from file:
+        path: $_tag.tmp_file$.gpg
+        mime_type: binary
+    - write to file:
+        path: $_tag['base_dir']$/packages_metadata/archlinux.gpg
+        mode: wb
+    - iterate:
+        - $_tag.tmp_file$
+        - $_tag.tmp_file$.gpg
+    - unlink: $_$

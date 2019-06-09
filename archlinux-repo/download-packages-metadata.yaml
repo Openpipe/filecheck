@@ -21,7 +21,7 @@ start:
 section_meta_downloader:
 
     - enable:
-        concurrency: 1
+        concurrency: 3
 
     # Generate section db  url
     - insert: $_tag['mirror_base']$/$_tag['section']$.db.tar.gz
@@ -60,12 +60,28 @@ download metadata file:
     - read from url:
         url: $url$
         to_tmp_file: True
-    - execute: gpg --verify $_$ $_tag.tmp_filename$
+    - execute:
+        command:
+            gpg --keyring $_tag['base_dir']$/packages_metadata/archlinux.gpg
+            --verify $_$ $_tag.tmp_filename$
+        fail_on_error: False
+    - send to segment:
+        name: verify failed
+        when: $return_code != 0$
     - insert: $stderr$
-    - transform from regex match:
-        signer: Good signature from "([^"]*)'
-    - stderr:
-        gpg: G
+    - transform from regex group:
+        signer: 'Good signature from \"([^"]*)'
+    - tag key: signer
+    - send to segment: export meta data
+
+verify failed:
+    - print: Failed $stderr$
+    - tag: { signer: Unknown }
+    - send to segment: export meta data
+
+export meta data:
+    - enable:
+        concurrency: 10
     - read from file:
         path: $_tag.tmp_filename$
         mime_type: application/x-tar
@@ -79,8 +95,4 @@ download metadata file:
     - write to file:
         path: $_tag['metadata_filename']$
         content: $_tag$
-    - send to segment: count_total_downloads
-
-count_total_downloads:
-    - count:
 
