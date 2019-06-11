@@ -48,14 +48,16 @@ section_meta_downloader:
 
 download metadata file:
     - enable:
-        concurrency: 10
+        concurrency: 50
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$" }
     - print: Downloading $url$
     - read from url:
         url: $url$
         to_tmp_file: True
     - tag:
-            tmp_filename: $_$
+        tmp_filename: $_$
+    - read from file status: $_$
+    - tag key: size
     - insert: { url: "$_tag['mirror_base']$/$_tag['FILENAME']$.sig" }
     - read from url:
         url: $url$
@@ -90,9 +92,11 @@ export meta data:
     - insert: $content$
     - decompress: { type: gzip }
     - tag: { MTREE: $ _.decode().splitlines() $ }
-    - insert: "$_tag['meta_dir']$/$_tag['FILENAME']$.json"
-    - print: Creating metadata file $_$
-    - write to file:
-        path: $_tag['metadata_filename']$
-        content: $_tag$
 
+    # Use insert the metadata filename because we want to drop it from tags
+    - insert: $_tag['metadata_filename']$
+    - print: Creating metadata file $_$
+    - drop tag: [base_dir, meta_dir, metadata_filename, tmp_filename]
+    - write to file:
+        path: $_$
+        content: $_tag$
